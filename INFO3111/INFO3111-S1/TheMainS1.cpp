@@ -12,16 +12,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static const struct
+struct sVertex
 {
     float x, y;
     float r, g, b;
-} vertices[3] =
+};
+
+sVertex vertices[6] =
 {
     { -0.6f, -0.4f, 1.f, 0.f, 0.f },
     {  0.6f, -0.4f, 0.f, 1.f, 0.f },
-    {   0.f,  0.6f, 0.f, 0.f, 1.f }
+    {   0.f,  0.6f, 0.f, 0.f, 1.f },
+
+    { -0.6f + 3.0f, -0.4f, 1.f, 0.f, 0.f },
+    {  0.6f + 3.0f, -0.4f, 0.f, 1.f, 0.f },
+    {  0.0f + 3.0f,  0.6f, 0.f, 0.f, 1.f }
 };
+//glDrawArrays(GL_TRIANGLES, 0, 6);
 
 static const char* vertex_shader_text =
 "#version 110\n"
@@ -76,6 +83,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
+
     glfwSetKeyCallback(window, key_callback);
     glfwMakeContextCurrent(window);
     gladLoadGLLoader( (GLADloadproc)glfwGetProcAddress );
@@ -93,12 +101,17 @@ int main(void)
     fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
     glCompileShader(fragment_shader);
+
     program = glCreateProgram();
 
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment_shader);
     glLinkProgram(program);
 
+
+//	"uniform mat4 MVP;\n"
+//	"attribute vec3 vCol;\n"
+//	"attribute vec2 vPos;\n"
     mvp_location = glGetUniformLocation(program, "MVP");
     vpos_location = glGetAttribLocation(program, "vPos");
     vcol_location = glGetAttribLocation(program, "vCol");
@@ -109,12 +122,16 @@ int main(void)
     glEnableVertexAttribArray(vcol_location);
     glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertices[0]), (void*) (sizeof(float) * 2));
-    while (!glfwWindowShouldClose(window))
+ 
+	float HACK_zLocationCamera = -20.0f;
+
+	while (!glfwWindowShouldClose(window))
     {
         float ratio;
         int width, height;
  //       mat4x4 m, p, mvp;
         glm::mat4 m, p, v, mvp;
+
         glfwGetFramebufferSize(window, &width, &height);
         ratio = width / (float) height;
         glViewport(0, 0, width, height);
@@ -125,7 +142,7 @@ int main(void)
 
 		//mat4x4_rotate_Z(m, m, (float) glfwGetTime());
 		glm::mat4 rotateZ = glm::rotate( glm::mat4(1.0f), 
-									(float) glfwGetTime(), 
+									0.0f, // (float) glfwGetTime(), 
 									glm::vec3( 0.0f, 0.0, 1.0f ) );
 
 		m = m * rotateZ;
@@ -138,9 +155,12 @@ int main(void)
 
 		v = glm::mat4(1.0f);
 
-  		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, -4.0f ); 
+  		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, +12.0f ); 
+ // 		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, HACK_zLocationCamera ); 
 		glm::vec3 cameraTarget = glm::vec3( 0.0f, 0.0f, 0.0f ); 
 		glm::vec3 upVector = glm::vec3( 0.0f, 1.0f, 0.0f );
+
+		HACK_zLocationCamera += 0.1f;
 
 		v = glm::lookAt( cameraEye, 
 						 cameraTarget,
@@ -156,7 +176,8 @@ int main(void)
         //glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
 		glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
 
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+ //       glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
