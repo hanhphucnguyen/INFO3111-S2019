@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 
 struct sVertex
 {
@@ -30,6 +31,13 @@ sVertex vertices[6] =
 };
 //glDrawArrays(GL_TRIANGLES, 0, 6);
 
+
+glm::vec3 g_cameraEye = glm::vec3( 0.0, 0.0, +12.0f ); 
+
+// Step 3: Add a C++ side variable for colour
+//         (so we can change it externally)
+glm::vec3 g_triangleColour = glm::vec3(0.5f, 0.1f, 0.75f);
+
 static const char* vertex_shader_text =
 "#version 110\n"
 "uniform mat4 MVP;\n"
@@ -42,13 +50,17 @@ static const char* vertex_shader_text =
 "    color = vCol;\n"
 "}\n";
 
+// Step 1: Add a newColour uniform variable to the shader...
 static const char* fragment_shader_text =
 "#version 110\n"
 "varying vec3 color;\n"
+"uniform vec3 newColour;\n"
 "void main()\n"
 "{\n"
-"    gl_FragColor = vec4(color, 1.0);\n"
+"    gl_FragColor = vec4(newColour, 1.0);\n"
 "}\n";
+
+// "color" changed to "newColour" in line 55
 
 static void error_callback(int error, const char* description)
 {
@@ -59,7 +71,39 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+	// WASD
+	// A & D =  x axis (left and right)
+	// W & S =  z axis (towards and away)
+	// Q & E =  y axis (up and down)
+	const float CAMERASPEED = 0.1f;
+
+	if ( key == GLFW_KEY_A ) {	::g_cameraEye.x += CAMERASPEED;	}
+	if ( key == GLFW_KEY_D ) {	::g_cameraEye.x -= CAMERASPEED;	}
+
+	if ( key == GLFW_KEY_W ) {	::g_cameraEye.z += CAMERASPEED;	}
+	if ( key == GLFW_KEY_S ) {	::g_cameraEye.z -= CAMERASPEED;	}
+
+	if ( key == GLFW_KEY_Q ) {	::g_cameraEye.y += CAMERASPEED;	}
+	if ( key == GLFW_KEY_E ) {	::g_cameraEye.y -= CAMERASPEED;	}
+
+	const float COLOURCHANGERATE = 0.01f;
+	if ( key == GLFW_KEY_1 ) { ::g_triangleColour.x += COLOURCHANGERATE; }
+	if ( key == GLFW_KEY_2 ) { ::g_triangleColour.x -= COLOURCHANGERATE; }
+
+	if ( key == GLFW_KEY_3 ) { ::g_triangleColour.y += COLOURCHANGERATE; }
+	if ( key == GLFW_KEY_4 ) { ::g_triangleColour.y -= COLOURCHANGERATE; }
+
+	if ( key == GLFW_KEY_5 ) { ::g_triangleColour.z += COLOURCHANGERATE; }
+	if ( key == GLFW_KEY_6 ) { ::g_triangleColour.z -= COLOURCHANGERATE; }
+
+	std::cout << "tricolour = (R:" 
+		<< ::g_triangleColour.x << ", "
+		<< ::g_triangleColour.y << ", "
+		<< ::g_triangleColour.z << ")" << std::endl;
+
 }
+
 
 int main(void)
 {
@@ -68,6 +112,7 @@ int main(void)
     GLint mvp_location, vpos_location, vcol_location;
 
     glfwSetErrorCallback(error_callback);
+
     if (!glfwInit())
 	{
         exit(EXIT_FAILURE);
@@ -85,6 +130,7 @@ int main(void)
 
 
     glfwSetKeyCallback(window, key_callback);
+
     glfwMakeContextCurrent(window);
     gladLoadGLLoader( (GLADloadproc)glfwGetProcAddress );
     glfwSwapInterval(1);
@@ -93,6 +139,7 @@ int main(void)
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+//vertices[6]
 
     vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
@@ -113,6 +160,13 @@ int main(void)
 //	"attribute vec3 vCol;\n"
 //	"attribute vec2 vPos;\n"
     mvp_location = glGetUniformLocation(program, "MVP");
+
+	//"uniform vec3 newColour;\n"
+	// 
+	// Step 2: Get the "location" (i.e. number) of that
+	//         "uniform" variable inside the shader
+	GLint newColour_location = glGetUniformLocation(program, "newColour");
+
     vpos_location = glGetAttribLocation(program, "vPos");
     vcol_location = glGetAttribLocation(program, "vCol");
 
@@ -155,14 +209,12 @@ int main(void)
 
 		v = glm::mat4(1.0f);
 
-  		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, +12.0f ); 
- // 		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, HACK_zLocationCamera ); 
+ //		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, +12.0f ); 
 		glm::vec3 cameraTarget = glm::vec3( 0.0f, 0.0f, 0.0f ); 
 		glm::vec3 upVector = glm::vec3( 0.0f, 1.0f, 0.0f );
 
-		HACK_zLocationCamera += 0.1f;
 
-		v = glm::lookAt( cameraEye, 
+		v = glm::lookAt( g_cameraEye, 
 						 cameraTarget,
 						 upVector );
      		
@@ -175,6 +227,17 @@ int main(void)
 
         //glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
 		glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
+
+		// Step 4: Copy the value from our C++ side into our shader
+		// 
+		//       uniform vec3 newColour;
+		//  
+		// a vec3 is 3 floats, so we use glUniform3f()
+
+		glUniform3f( newColour_location, 
+					 ::g_triangleColour.x,
+					 ::g_triangleColour.y, 
+					 ::g_triangleColour.z );
 
  //       glDrawArrays(GL_TRIANGLES, 0, 3);
         glDrawArrays(GL_TRIANGLES, 0, 6);
