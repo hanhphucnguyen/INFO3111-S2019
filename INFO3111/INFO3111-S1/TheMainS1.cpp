@@ -46,7 +46,8 @@ static const char* vertex_shader_text =
 "varying vec3 color;\n"
 "void main()\n"
 "{\n"
-"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
+"    vec2 finalPos = vPos;\n"
+"    gl_Position = MVP * vec4(finalPos, 0.0, 1.0);\n"
 "    color = vCol;\n"
 "}\n";
 
@@ -177,7 +178,6 @@ int main(void)
     glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertices[0]), (void*) (sizeof(float) * 2));
  
-	float HACK_zLocationCamera = -20.0f;
 
 	while (!glfwWindowShouldClose(window))
     {
@@ -238,6 +238,8 @@ int main(void)
 					 ::g_triangleColour.x,
 					 ::g_triangleColour.y, 
 					 ::g_triangleColour.z );
+
+
 
  //       glDrawArrays(GL_TRIANGLES, 0, 3);
         glDrawArrays(GL_TRIANGLES, 0, 6);
