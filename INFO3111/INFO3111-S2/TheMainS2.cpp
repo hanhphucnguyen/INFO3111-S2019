@@ -11,31 +11,40 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 
 struct sMyVertex
 {
-    float x, y;
-    float r, g, b;
+    float x, y;				// vPos
+    float r, g, b;			// vCol
 };
 
-sMyVertex vertices[3] =
+sMyVertex vertices[6] =
 {
-    { -1.2f, -0.4f, 1.f, 0.f, 0.f },
+    { -0.6f, -0.4f, 1.f, 0.f, 0.f },
     {  0.6f, -0.4f, 0.f, 1.f, 0.f },
-    {  0.0f,  0.6f, 0.f, 0.f, 1.f }
+    {  0.0f,  0.6f, 0.f, 0.f, 1.f },
+
+    { -2.6f, -0.4f, 0.f, 1.f, 0.f },
+    { -1.4f, -0.4f, 0.f, 1.f, 0.f },
+    { -2.0f,  0.6f, 0.f, 1.f, 0.f }
 };
 
 // Camera 
-glm::vec3 g_cameraEye = glm::vec3( 0.0, 0.0, +4.0f );
+glm::vec3 g_cameraEye = glm::vec3( 0.0, 0.0, +10.0f );
 
+// Step 2: Make a "local" variable that matches the shader variable
+// Triangle colour
+// 	"uniform vec3 triColour;\n"	
+glm::vec3 g_triangleColour = glm::vec3( 1.0f, 0.0f, 0.0f );
 
 
 static const char* vertex_shader_text =
 "#version 110\n"
 "uniform mat4 MVP;\n"
-"attribute vec3 vCol;\n"
+"attribute vec3 vCol;\n"	
 "attribute vec2 vPos;\n"
-"varying vec3 color;\n"
+"varying vec3 color;\n"			
 "void main()\n"
 "{\n"
 "    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
@@ -44,12 +53,12 @@ static const char* vertex_shader_text =
 
 static const char* fragment_shader_text =
 "#version 110\n"
-"varying vec3 color;\n"
+"varying vec3 color;\n"		
+"uniform vec3 triColour;\n"			
 "void main()\n"
 "{\n"
-"    gl_FragColor = vec4(color, 1.0);\n"
+"    gl_FragColor = vec4(triColour, 1.0);\n"  
 "}\n";
-
 
 
 static void error_callback(int error, const char* description)
@@ -77,6 +86,23 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	if ( key == GLFW_KEY_Q ) { ::g_cameraEye.y -= CAMERASPEED; }	// "down"?
 	if ( key == GLFW_KEY_E ) { ::g_cameraEye.y += CAMERASPEED; }	// "up"?
 
+
+	// Step 3: Change the LOCAL triangle colour
+	if ( key == GLFW_KEY_1 ) { ::g_triangleColour.r += 0.01f; }
+	if ( key == GLFW_KEY_2 ) { ::g_triangleColour.r -= 0.01f; }
+
+
+	if ( key == GLFW_KEY_3 ) { ::g_triangleColour.g += 0.01f; }
+	if ( key == GLFW_KEY_4 ) { ::g_triangleColour.g -= 0.01f; }
+
+	if ( key == GLFW_KEY_5 ) { ::g_triangleColour.b += 0.01f; }
+	if ( key == GLFW_KEY_6 ) { ::g_triangleColour.b -= 0.01f; }
+
+
+	std::cout << "Tricolour ("
+		<< ::g_triangleColour.r << ", "
+		<< ::g_triangleColour.g << ", " 
+		<< ::g_triangleColour.b << ")" << std::endl;
 }
 
 int main(void)
@@ -108,6 +134,7 @@ int main(void)
     glfwSwapInterval(1);
 
     // NOTE: OpenGL error checks have been omitted for brevity
+	//sMyVertex vertices[6]
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -130,6 +157,11 @@ int main(void)
     mvp_location = glGetUniformLocation(program, "MVP");
     vpos_location = glGetAttribLocation(program, "vPos");
     vcol_location = glGetAttribLocation(program, "vCol");
+
+	// Step 1: get the "location of the uniform variable"
+	//"uniform vec3 triColour;\n"	
+	GLint triColour_Loc = glGetUniformLocation(program, "triColour");
+
 
     glEnableVertexAttribArray(vpos_location);
     glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
@@ -175,7 +207,7 @@ int main(void)
 
 		v = glm::lookAt( ::g_cameraEye,			// You don't really need the "::", it's just cool and sexy
 						 cameraTarget,
-						 upVector );
+					 	 upVector );
      		
 		//mat4x4_mul(mvp, p, m);
 		mvp = p * v * m; 
@@ -187,7 +219,28 @@ int main(void)
         //glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
 		glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
 
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+		// ::g_triangleColour		(local variable)
+		// "uniform vec3 triColour;\n"	  (shader variable)
+		// triColour_Loc      (location of variable in shader)
+		// This will copy the "local" variable into the shader
+		glUniform3f( triColour_Loc, 
+					 ::g_triangleColour.r, 
+					 ::g_triangleColour.g, 
+					 ::g_triangleColour.b );
+
+
+//sMyVertex vertices[6] =
+//{
+//    { -0.6f, -0.4f, 1.f, 0.f, 0.f },
+//    {  0.6f, -0.4f, 0.f, 1.f, 0.f },
+//    {  0.0f,  0.6f, 0.f, 0.f, 1.f },
+//
+//    { -2.6f, -0.4f, 1.f, 0.f, 0.f },
+//    { -1.4f, -0.4f, 0.f, 1.f, 0.f },
+//    { -2.0f,  0.6f, 0.f, 0.f, 1.f }
+//};
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
