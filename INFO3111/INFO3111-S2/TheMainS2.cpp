@@ -12,16 +12,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static const struct
+struct sMyVertex
 {
     float x, y;
     float r, g, b;
-} vertices[3] =
-{
-    { -0.6f, -0.4f, 1.f, 0.f, 0.f },
-    {  0.6f, -0.4f, 0.f, 1.f, 0.f },
-    {   0.f,  0.6f, 0.f, 0.f, 1.f }
 };
+
+sMyVertex vertices[3] =
+{
+    { -1.2f, -0.4f, 1.f, 0.f, 0.f },
+    {  0.6f, -0.4f, 0.f, 1.f, 0.f },
+    {  0.0f,  0.6f, 0.f, 0.f, 1.f }
+};
+
+// Camera 
+glm::vec3 g_cameraEye = glm::vec3( 0.0, 0.0, +4.0f );
+
+
 
 static const char* vertex_shader_text =
 "#version 110\n"
@@ -43,6 +50,8 @@ static const char* fragment_shader_text =
 "    gl_FragColor = vec4(color, 1.0);\n"
 "}\n";
 
+
+
 static void error_callback(int error, const char* description)
 {
     fprintf(stderr, "Error: %s\n", description);
@@ -52,6 +61,22 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+	// Use the keys to move the "Camera" around
+	const float CAMERASPEED = 0.1f;
+
+	// A + D are "left and right"
+	if ( key == GLFW_KEY_A ) { ::g_cameraEye.x -= CAMERASPEED; }	// Left
+	if ( key == GLFW_KEY_D ) { ::g_cameraEye.x += CAMERASPEED; }	// Left
+
+	// W + S are "forward and backward"
+	if ( key == GLFW_KEY_W ) { ::g_cameraEye.z += CAMERASPEED; }	// "forward"?
+	if ( key == GLFW_KEY_S ) { ::g_cameraEye.z -= CAMERASPEED; }	// "backward"?
+
+	// Q + E are "up and down"
+	if ( key == GLFW_KEY_Q ) { ::g_cameraEye.y -= CAMERASPEED; }	// "down"?
+	if ( key == GLFW_KEY_E ) { ::g_cameraEye.y += CAMERASPEED; }	// "up"?
+
 }
 
 int main(void)
@@ -77,6 +102,7 @@ int main(void)
     }
 
     glfwSetKeyCallback(window, key_callback);
+
     glfwMakeContextCurrent(window);
     gladLoadGLLoader( (GLADloadproc)glfwGetProcAddress );
     glfwSwapInterval(1);
@@ -93,12 +119,14 @@ int main(void)
     fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
     glCompileShader(fragment_shader);
+
     program = glCreateProgram();
 
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment_shader);
     glLinkProgram(program);
 
+	//"uniform mat4 MVP;\n"
     mvp_location = glGetUniformLocation(program, "MVP");
     vpos_location = glGetAttribLocation(program, "vPos");
     vcol_location = glGetAttribLocation(program, "vCol");
@@ -109,7 +137,8 @@ int main(void)
     glEnableVertexAttribArray(vcol_location);
     glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertices[0]), (void*) (sizeof(float) * 2));
-    while (!glfwWindowShouldClose(window))
+
+	while (!glfwWindowShouldClose(window))
     {
         float ratio;
         int width, height;
@@ -118,6 +147,8 @@ int main(void)
         glfwGetFramebufferSize(window, &width, &height);
         ratio = width / (float) height;
         glViewport(0, 0, width, height);
+
+		glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );	// White
         glClear(GL_COLOR_BUFFER_BIT);
 
         //         mat4x4_identity(m);
@@ -125,8 +156,8 @@ int main(void)
 
 		//mat4x4_rotate_Z(m, m, (float) glfwGetTime());
 		glm::mat4 rotateZ = glm::rotate( glm::mat4(1.0f), 
-									(float) glfwGetTime(), 
-									glm::vec3( 0.0f, 0.0, 1.0f ) );
+									     0.0f,	// (float) glfwGetTime(), 
+									     glm::vec3( 0.0f, 0.0, 1.0f ) );
 
 		m = m * rotateZ;
 
@@ -138,11 +169,11 @@ int main(void)
 
 		v = glm::mat4(1.0f);
 
-  		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, -4.0f ); 
+//  		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, -4.0f ); 
 		glm::vec3 cameraTarget = glm::vec3( 0.0f, 0.0f, 0.0f ); 
 		glm::vec3 upVector = glm::vec3( 0.0f, 1.0f, 0.0f );
 
-		v = glm::lookAt( cameraEye, 
+		v = glm::lookAt( ::g_cameraEye,			// You don't really need the "::", it's just cool and sexy
 						 cameraTarget,
 						 upVector );
      		
@@ -160,6 +191,7 @@ int main(void)
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
     glfwDestroyWindow(window);
     glfwTerminate();
     exit(EXIT_SUCCESS);
