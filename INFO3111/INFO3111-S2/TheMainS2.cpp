@@ -253,6 +253,20 @@ int main(void)
 		//::g_pMyShaderManager->useShaderProgram("basicshader");
 
 
+		//uniform float newRed;
+		//uniform float newGreen;
+		//uniform float newBlue;
+		GLint newRed_loc = glGetUniformLocation(shadProgID, "newRed");
+		GLint newGreen_loc = glGetUniformLocation(shadProgID, "newGreen");
+		GLint newBlue_loc = glGetUniformLocation(shadProgID, "newBlue");
+
+		// Set them in the shader by calling glUniformX();
+		glUniform1f(newRed_loc, 0.5f);
+		glUniform1f(newGreen_loc, 0.25f);
+		glUniform1f(newBlue_loc, 0.75f);
+
+
+
         //glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
 		glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
 
