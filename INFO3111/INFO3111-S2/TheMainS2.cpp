@@ -210,8 +210,17 @@ int main(void)
     {
         float ratio;
         int width, height;
+
  //       mat4x4 m, p, mvp;
-        glm::mat4 m, p, v, mvp;
+ //       glm::mat4 m, p, v, mvp;
+		glm::mat4 matModel;		// "m"
+		glm::mat4 matView;		// "v"
+		glm::mat4 matProj;		// "p"
+
+
+		// Separate the 3 matrix values
+
+
         glfwGetFramebufferSize(window, &width, &height);
         ratio = width / (float) height;
         glViewport(0, 0, width, height);
@@ -220,33 +229,45 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT);
 
         //         mat4x4_identity(m);
-		m = glm::mat4(1.0f);	
+		//m = glm::mat4(1.0f);	
+		matModel = glm::mat4(1.0f);
 
 		//mat4x4_rotate_Z(m, m, (float) glfwGetTime());
 		glm::mat4 rotateZ = glm::rotate( glm::mat4(1.0f), 
 									     0.0f,	// (float) glfwGetTime(), 
 									     glm::vec3( 0.0f, 0.0, 1.0f ) );
 
-		m = m * rotateZ;
+//		m = m * rotateZ;
+		matModel = matModel * rotateZ;
 
         //mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-		p = glm::perspective( 0.6f, 
-							  ratio, 
-							  0.1f, 
-							  1000.0f );
+		//p = glm::perspective( 0.6f, 
+		//					  ratio, 
+		//					  0.1f, 
+		//					  1000.0f );
+		matProj = glm::perspective( 0.6f, 
+							        ratio, 
+							        0.1f, 
+							        1000.0f );
 
-		v = glm::mat4(1.0f);
+		//v = glm::mat4(1.0f);
+		matView = glm::mat4(1.0f);
 
 //  		glm::vec3 cameraEye = glm::vec3( 0.0, 0.0, -4.0f ); 
 		glm::vec3 cameraTarget = glm::vec3( 0.0f, 0.0f, 0.0f ); 
 		glm::vec3 upVector = glm::vec3( 0.0f, 1.0f, 0.0f );
 
-		v = glm::lookAt( ::g_cameraEye,			// You don't really need the "::", it's just cool and sexy
+		//v = glm::lookAt( ::g_cameraEye,			// You don't really need the "::", it's just cool and sexy
+		//				 cameraTarget,
+		//			 	 upVector );
+		matView = glm::lookAt( ::g_cameraEye,			// You don't really need the "::", it's just cool and sexy
 						 cameraTarget,
 					 	 upVector );
      		
 		//mat4x4_mul(mvp, p, m);
-		mvp = p * v * m; 
+//		mvp = p * v * m; 
+
+
 
 
         glUseProgram(shadProgID);
@@ -268,7 +289,20 @@ int main(void)
 
 
         //glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
-		glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
+		//glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
+
+		// Am getting the unifrom locations here, 
+		// which is slow, but I'm doing it for clarity
+		//uniform mat4 matModel;		// "m"
+		//uniform mat4 matView;		// "v"
+		//uniform mat4 matProj;		// "p"
+		GLint matModel_loc = glad_glGetUniformLocation(shadProgID, "matModel");
+		GLint matView_loc = glad_glGetUniformLocation(shadProgID, "matView");
+		GLint matProj_loc = glad_glGetUniformLocation(shadProgID, "matProj");
+
+		glUniformMatrix4fv(matModel_loc, 1, GL_FALSE, glm::value_ptr(matModel));
+		glUniformMatrix4fv(matView_loc, 1, GL_FALSE, glm::value_ptr(matView));
+		glUniformMatrix4fv(matProj_loc, 1, GL_FALSE, glm::value_ptr(matProj));
 
 		// ::g_triangleColour		(local variable)
 		// "uniform vec3 triColour;\n"	  (shader variable)
