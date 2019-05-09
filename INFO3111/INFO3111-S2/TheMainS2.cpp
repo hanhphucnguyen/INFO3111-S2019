@@ -1,5 +1,7 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include "globalStuff.h"
+// #include <glad/glad.h>		// in globalStuff.h
+// #include <GLFW/glfw3.h>		// in globalStuff.h
+
 //#include "linmath.h"
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp> // glm::vec3
@@ -12,6 +14,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
+
+#include "cShaderManager.h"
 
 struct sMyVertex
 {
@@ -39,26 +43,30 @@ glm::vec3 g_cameraEye = glm::vec3( 0.0, 0.0, +10.0f );
 glm::vec3 g_triangleColour = glm::vec3( 1.0f, 0.0f, 0.0f );
 
 
-static const char* vertex_shader_text =
-"#version 110\n"
-"uniform mat4 MVP;\n"
-"attribute vec3 vCol;\n"	
-"attribute vec2 vPos;\n"
-"varying vec3 color;\n"			
-"void main()\n"
-"{\n"
-"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
-"    color = vCol;\n"
-"}\n";
+//cShaderManager myShaderManager;			// Stack
+cShaderManager* g_pMyShaderManager = NULL;	//  = new cShaderManager();	// Heap
 
-static const char* fragment_shader_text =
-"#version 110\n"
-"varying vec3 color;\n"		
-"uniform vec3 triColour;\n"			
-"void main()\n"
-"{\n"
-"    gl_FragColor = vec4(triColour, 1.0);\n"  
-"}\n";
+
+//static const char* vertex_shader_text =
+//"#version 110\n"
+//"uniform mat4 MVP;\n"
+//"attribute vec3 vCol;\n"	
+//"attribute vec2 vPos;\n"
+//"varying vec3 color;\n"			
+//"void main()\n"
+//"{\n"
+//"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
+//"    color = vCol;\n"
+//"}\n";
+//
+//static const char* fragment_shader_text =
+//"#version 110\n"
+//"varying vec3 color;\n"		
+//"uniform vec3 triColour;\n"			
+//"void main()\n"
+//"{\n"
+//"    gl_FragColor = vec4(triColour, 1.0);\n"  
+//"}\n";
 
 
 static void error_callback(int error, const char* description)
@@ -108,7 +116,8 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 int main(void)
 {
     GLFWwindow* window;
-    GLuint vertex_buffer, vertex_shader, fragment_shader, program;
+	GLuint vertex_buffer;
+//	GLuint vertex_shader, fragment_shader, program;
     GLint mvp_location, vpos_location, vcol_location;
 
     glfwSetErrorCallback(error_callback);
@@ -137,30 +146,57 @@ int main(void)
 	//sMyVertex vertices[6]
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
-    glCompileShader(vertex_shader);
+	// Create a shader manager
+	::g_pMyShaderManager = new cShaderManager();
 
-    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
-    glCompileShader(fragment_shader);
+	cShaderManager::cShader vertShad;
+	vertShad.fileName = "vertexShader.glsl";
 
-    program = glCreateProgram();
+	cShaderManager::cShader fragShad; 
+	fragShad.fileName = "fragmentShader.glsl";
 
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-    glLinkProgram(program);
+	if (!::g_pMyShaderManager->createProgramFromFile(
+					"basicshader",
+					vertShad, 
+					fragShad))
+	{
+		std::cout << "ERROR: didn't compile" << std::endl;
+		std::cout << ::g_pMyShaderManager->getLastError() << std::endl;
+		return -1;
+	}
+	else
+	{
+		std::cout << "Shaders compiled OK" << std::endl;
+	}
+
+
+//    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+//    glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
+//   glCompileShader(vertex_shader);
+//
+//    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+//    glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
+//   glCompileShader(fragment_shader);
+//
+//    program = glCreateProgram();
+//
+//    glAttachShader(program, vertex_shader);
+//    glAttachShader(program, fragment_shader);
+//    glLinkProgram(program);
+
+	GLint shadProgID = ::g_pMyShaderManager->getIDFromFriendlyName("basicshader");
+
 
 	//"uniform mat4 MVP;\n"
-    mvp_location = glGetUniformLocation(program, "MVP");
-    vpos_location = glGetAttribLocation(program, "vPos");
-    vcol_location = glGetAttribLocation(program, "vCol");
+    mvp_location = glGetUniformLocation(shadProgID, "MVP");
+    vpos_location = glGetAttribLocation(shadProgID, "vPos");
+    vcol_location = glGetAttribLocation(shadProgID, "vCol");
 
 	// Step 1: get the "location of the uniform variable"
 	//"uniform vec3 triColour;\n"	
-	GLint triColour_Loc = glGetUniformLocation(program, "triColour");
+	GLint triColour_Loc = glGetUniformLocation(shadProgID, "triColour");
 
 
     glEnableVertexAttribArray(vpos_location);
@@ -213,7 +249,8 @@ int main(void)
 		mvp = p * v * m; 
 
 
-        glUseProgram(program);
+        glUseProgram(shadProgID);
+		//::g_pMyShaderManager->useShaderProgram("basicshader");
 
 
         //glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
@@ -244,6 +281,10 @@ int main(void)
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+
+	// delete everything
+	delete ::g_pMyShaderManager;
 
     glfwDestroyWindow(window);
     glfwTerminate();
